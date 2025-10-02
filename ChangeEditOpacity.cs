@@ -7,11 +7,16 @@ namespace ChangeEditOpacity
 {
     internal class ChangeEditOpacity
     {
+        /// <summary>
+        /// Reads the current InactiveComponentsShadeOpacity from Inventor, 
+        /// shows a dialog to change it, and applies the new value on OK.
+        /// </summary>
+        /// <param name="invApplication">The running Inventor Application object.</param>
         public static void Execute(Inventor.Application invApplication)
         {
             // Launch the UI logic on a new STA thread.
             // This is required for WPF components to run correctly.
-            Thread thread = new Thread(() =>
+            Thread thread = new(() =>
             {
                 try
                 {
@@ -20,68 +25,80 @@ namespace ChangeEditOpacity
                     {
                         // Create the WPF Application instance ONLY if it doesn't exist.
                         // This will run the WPF message pump for the Add-in's AppDomain.
-                        new System.Windows.Application();
+                        _ = new System.Windows.Application();
                     }
 
-                    // 1. Get Inventor data before showing the dialog
-                    var schemes = invApplication.ColorSchemes as ColorSchemes;
+                    // 1. Get Inventor Display Options and the current Opacity value
+                    DisplayOptions displayOptions = invApplication.DisplayOptions;
+                    // InactiveComponentsShadeOpacity returns a Long (percentage 0-100)
+                    long currentOpacity = displayOptions.InactiveComponentsShadeOpacity;
 
                     // 2. Create the WPF Window
                     // You must define a SimpleView class in a Views namespace for this to compile.
                     var window = new Views.SimpleView();
 
-                    var comboBox = window.ColorSchemeComboBox;
-                    comboBox.Items.Clear();
-
-                    // 3. Populate the ComboBox (Logic remains the same)
-                    if (schemes != null && schemes.Count > 0)
+                    // ASSUMPTION: The SimpleView class now exposes a public property named 
+                    // 'InitialOpacityValue' which is used to initialize the UI control (e.g., a Slider).
+                    // The user must update SimpleView.cs to expose this property.
+                    try
                     {
-                        for (int i = 1; i <= schemes.Count; i++)
-                        {
-                            if (schemes[i] is ColorScheme scheme)
-                            {
-                                comboBox.Items.Add(scheme.Name);
-
-                                if (invApplication.ActiveColorScheme is ColorScheme activeScheme && scheme.Name == activeScheme.Name)
-                                    comboBox.SelectedItem = scheme.Name;
-                            }
-                        }
+                        // Use reflection as a general placeholder for a public property setter,
+                        // as we cannot see the SimpleView definition here.
+                        window.GetType().GetProperty("InitialOpacityValue")?.SetValue(window, currentOpacity);
                     }
-                    else
-                    {
-                        comboBox.Items.Add("(no color schemes found)");
-                        comboBox.IsEnabled = false;
-                    }
+                    catch { /* Fail silently if the property is not found or cannot be set */ }
 
-                    // 4. Handle OK Button Click (Logic remains the same)
+
+                    // 3. Handle OK Button Click (Logic updated to set the opacity)
                     window.OkButton.Click += (s, e) =>
                     {
-                        var selectedName = comboBox.SelectedItem as string;
-                        if (schemes != null && !string.IsNullOrEmpty(selectedName))
+                        long newOpacity = -1; // Default to an invalid value
+                        try
                         {
-                            for (int i = 1; i <= schemes.Count; i++)
+                            // ASSUMPTION: The final selected opacity value is available via a public property 
+                            // on the window (e.g., SelectedOpacityValue) after the user interacts with the UI.
+
+                            object? valueObj = window.GetType().GetProperty("SelectedOpacityValue")?.GetValue(window);
+
+                            if (valueObj != null)
                             {
-                                if (schemes[i] is ColorScheme scheme && scheme.Name == selectedName)
-                                {
-                                    scheme.Activate();
-                                    break;
-                                }
+                                // The Inventor API expects a long (percentage 0-100)
+                                newOpacity = Convert.ToInt64(valueObj);
+                            }
+
+                            // The property is a percentage (0-100)
+                            if (newOpacity >= 0 && newOpacity <= 100)
+                            {
+                                // Apply the new opacity to the Inventor setting
+                                displayOptions.InactiveComponentsShadeOpacity = (int)newOpacity;
+                            }
+                            else
+                            {
+                                // Inform user if the retrieved value is out of range
+                                MessageBox.Show("Opacity value is outside the valid range (0-100). No change applied.", "Validation Error");
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            // Handle conversion or Inventor API error
+                            MessageBox.Show($"Failed to apply new opacity setting: {ex.Message}", "Application Error");
+                        }
+
+                        // Close the window after trying to apply changes
                         window.Close();
                     };
 
-                    // 5. Handle Cancel Button Click (Logic remains the same)
+                    // 4. Handle Cancel Button Click (Logic remains the same)
                     window.CancelButton.Click += (s, e) => window.Close();
 
-                    // 6. Show the dialog
+                    // 5. Show the dialog
                     window.ShowDialog();
                     // Do NOT call app.Shutdown() here, as it would close the single Application instance.
                 }
                 catch (Exception ex)
                 {
                     // Use a thread-safe way to display an error if needed
-                    MessageBox.Show("Error in UI thread: " + ex.Message, "Error");
+                    System.Windows.MessageBox.Show("Error in UI thread: " + ex.Message, "Error");
                 }
             });
 
