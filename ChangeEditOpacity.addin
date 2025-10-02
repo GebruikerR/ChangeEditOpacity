@@ -1,0 +1,8 @@
+<Addin Type="Standard">
+	<ClassId>{4a478a3c-556f-4936-bb39-4d3bf3749e05}</ClassId>
+	<ClientId>{4a478a3c-556f-4936-bb39-4d3bf3749e05}</ClientId>
+	<DisplayName>ChangeEditOpacity</DisplayName>
+	<Description>[Description]</Description>
+	<Assembly>ChangeEditOpacity.dll</Assembly>	
+	<SupportedSoftwareVersionGreaterThan>25..</SupportedSoftwareVersionGreaterThan>
+</Addin>

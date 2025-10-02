@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SignAssembly>False</SignAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Inventor.InternalNames" Version="0.5.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Autodesk.Inventor.Interop">
+      <HintPath>..\..\..\..\..\Program Files\Autodesk\Inventor 2025\Bin\Autodesk.Inventor.Interop.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ChangeEditOpacity.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="XCopy &quot;$(TargetPath)&quot; &quot;%25APPDATA%25\Autodesk\ApplicationPlugins\$(TargetName).bundle\Contents\&quot; /Y /R&#xD;&#xA;XCopy &quot;$(ProjectDir)ChangeEditOpacity.addin&quot; &quot;%25APPDATA%25\Autodesk\ApplicationPlugins\$(TargetName).bundle\Contents\&quot; /Y /R" />
+  </Target>
+
+</Project>
